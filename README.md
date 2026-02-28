@@ -30,13 +30,16 @@ Download exported SAM 3 ONNX models from [repo](https://huggingface.co/rectlabel
 
 Download ONNX Runtime from [repo](https://github.com/microsoft/onnxruntime/releases/download/v1.23.2/onnxruntime-osx-universal2-1.23.2.tgz).
 
+Download tokenizers-cpp from [repo](https://huggingface.co/rectlabel/segment-anything-onnx-models/blob/main/tokenizers-cpp.zip).
+
 Build and run.
 
 ```bash
-cmake -S . -B build -DONNXRUNTIME_ROOT_DIR=/Users/ryo/Downloads/onnxruntime-osx-universal2-1.23.2
+cmake -S . -B build -DONNXRUNTIME_ROOT_DIR=/Users/ryo/Downloads/onnxruntime-osx-universal2-1.23.2 -DTOKENIZERS_ROOT_DIR=/Users/ryo/Downloads/tokenizers-cpp
+
 cmake --build build
 
-./build/sam3_cpp_test -vision_encoder="sam3/vision-encoder_q.onnx" -text_encoder="sam3/text-encoder_q.onnx" -geometry_encoder="sam3/geometry-encoder_q.onnx" -decoder="sam3/decoder_q.onnx" -tokenizer="sam3/tokenizer.json" -image="david-tomaseti-Vw2HZQ1FGjU-unsplash.jpg" -device="cpu" -text="zebra" -threshold=0.5
+./build/sam3_cpp_test -vision_encoder="sam3/vision-encoder.onnx" -text_encoder="sam3/text-encoder.onnx" -geometry_encoder="sam3/geometry-encoder.onnx" -decoder="sam3/decoder.onnx" -tokenizer="sam3/tokenizer.json" -image="david-tomaseti-Vw2HZQ1FGjU-unsplash.jpg" -device="cpu" -text="zebra" -threshold=0.5
 
-./build/sam3_cpp_test -vision_encoder="sam3/vision-encoder_q.onnx" -text_encoder="sam3/text-encoder_q.onnx" -geometry_encoder="sam3/geometry-encoder_q.onnx" -decoder="sam3/decoder_q.onnx" -tokenizer="sam3/tokenizer.json" -image="david-tomaseti-Vw2HZQ1FGjU-unsplash.jpg" -device="cpu" -boxes="pos:124,113,183,329" -threshold=0.5
+./build/sam3_cpp_test -vision_encoder="sam3/vision-encoder.onnx" -text_encoder="sam3/text-encoder.onnx" -geometry_encoder="sam3/geometry-encoder.onnx" -decoder="sam3/decoder.onnx" -tokenizer="sam3/tokenizer.json" -image="david-tomaseti-Vw2HZQ1FGjU-unsplash.jpg" -device="cpu" -boxes="pos:124,113,183,329" -threshold=0.5
 ```
