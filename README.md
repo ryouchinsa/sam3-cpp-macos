@@ -1,6 +1,6 @@
 ## Segment Anything Model 3 CPP Wrapper for macOS
 
-This code is to run a [Segment Anything Model 3](https://github.com/facebookresearch/sam3) ONNX model in c++ code and implemented on the macOS app [RectLabel](https://rectlabel.com).
+This code is to run [Segment Anything Model 3](https://github.com/facebookresearch/sam3) ONNX models in c++ code and implemented on the macOS app [RectLabel](https://rectlabel.com).
 
 <video src="https://github.com/user-attachments/assets/812776c3-bfad-4f80-99e1-6141b21c024b" controls="controls" muted="muted" class="width-fit" style="max-height:640px; min-height: 200px"></video>
 
