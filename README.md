@@ -4,20 +4,14 @@ This code is to run [Segment Anything Model 3](https://github.com/facebookresear
 
 <video src="https://github.com/user-attachments/assets/812776c3-bfad-4f80-99e1-6141b21c024b" controls="controls" muted="muted" class="width-fit" style="max-height:640px; min-height: 200px"></video>
 
-Install SAM 3.
+Install SAM 3 and add Apple CPU support from [this PR](https://github.com/facebookresearch/sam3/pull/258).
 
 ```bash
 git clone https://github.com/facebookresearch/sam3.git
 cd sam3
+gh pr checkout 258
 pip install -e .
 ```
-
-Add Apple CPU support from [this PR](https://github.com/facebookresearch/sam3/pull/258).
-```bash
-gh pr checkout 258, ok
-```
-
-Download SAM 3 model from Hugging Face [repo](https://huggingface.co/facebook/sam3) and put them into sam3-model folder. 
 
 Install Segment Anything Model 3 CPP Wrapper.
 ```bash
@@ -25,12 +19,14 @@ git clone https://github.com/ryouchinsa/sam3-cpp-macos.git
 cd sam3-cpp-macos
 ```
 
+Download SAM 3 model from Hugging Face [repo](https://huggingface.co/facebook/sam3) and put them into sam3-model folder. 
+
 Export ONNX models.
 ```bash
-python export.py --all --model-path ../sam3-model
+python export.py --all --model-path sam3-model
 ```
 
-Download exported [SAM 3 ONNX models](https://huggingface.co/rectlabel/segment-anything-onnx-models/resolve/main/sam3.zip). 
+Download exported SAM 3 ONNX models from Hugging Face [repo](https://huggingface.co/rectlabel/segment-anything-onnx-models/resolve/main/sam3.zip). 
 
 Build and run.
 
