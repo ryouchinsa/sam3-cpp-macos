@@ -30,7 +30,7 @@ Download exported SAM 3 ONNX models from [repo](https://huggingface.co/rectlabel
 
 Download ONNX Runtime from [repo](https://github.com/microsoft/onnxruntime/releases/download/v1.23.2/onnxruntime-osx-universal2-1.23.2.tgz).
 
-Download tokenizers-cpp from [repo](https://huggingface.co/rectlabel/segment-anything-onnx-models/blob/main/tokenizers-cpp.zip).
+Download tokenizers-cpp from [repo](https://huggingface.co/rectlabel/segment-anything-onnx-models/resolve/main/tokenizers-cpp.zip).
 
 Build and run.
 
