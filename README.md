@@ -19,14 +19,16 @@ git clone https://github.com/ryouchinsa/sam3-cpp-macos.git
 cd sam3-cpp-macos
 ```
 
-Download SAM 3 model from Hugging Face [repo](https://huggingface.co/facebook/sam3) and put them into sam3-model folder. 
+Download SAM 3 model from [repo](https://huggingface.co/facebook/sam3) and put them into sam3-model folder. 
 
 Export ONNX models.
 ```bash
 python export.py --all --model-path sam3-model
 ```
 
-Download exported SAM 3 ONNX models from Hugging Face [repo](https://huggingface.co/rectlabel/segment-anything-onnx-models/resolve/main/sam3.zip). 
+Download exported SAM 3 ONNX models from [repo](https://huggingface.co/rectlabel/segment-anything-onnx-models/resolve/main/sam3.zip). 
+
+Download ONNX Runtime from [repo](https://github.com/microsoft/onnxruntime/releases/download/v1.23.2/onnxruntime-osx-universal2-1.23.2.tgz).
 
 Build and run.
 
