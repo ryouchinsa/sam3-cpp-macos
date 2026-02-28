@@ -2,7 +2,7 @@
 
 This code is to run [Segment Anything Model 3](https://github.com/facebookresearch/sam3) ONNX models in c++ code and implemented on the macOS app [RectLabel](https://rectlabel.com).
 
-<video src="https://github.com/user-attachments/assets/812776c3-bfad-4f80-99e1-6141b21c024b" controls="controls" muted="muted" class="width-fit" style="max-height:640px; min-height: 200px"></video>
+<video src="https://github.com/user-attachments/assets/459f0f9e-e74a-41f7-912a-dcf5b801625e" controls="controls" muted="muted" class="width-fit" style="max-height:640px; min-height: 200px"></video>
 
 Install SAM 3 and add Apple CPU support from [this PR](https://github.com/facebookresearch/sam3/pull/258).
 
