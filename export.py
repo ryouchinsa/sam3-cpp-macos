@@ -370,7 +370,7 @@ def export_vision_encoder(model: Sam3Model, output_dir: Path, device: str = "cud
     )
     quantize_dynamic(
         model_input=str(output_dir / "vision-encoder.onnx"),
-        model_output=str(output_dir / "vision-encoder_q.onnx"),
+        model_output=str(output_dir / "vision-encoder.onnx"),
         per_channel=False,
         reduce_range=False,
         weight_type=QuantType.QUInt8,
@@ -403,7 +403,7 @@ def export_text_encoder(model: Sam3Model, output_dir: Path, device: str = "cuda"
     )
     quantize_dynamic(
         model_input=str(output_dir / "text-encoder.onnx"),
-        model_output=str(output_dir / "text-encoder_q.onnx"),
+        model_output=str(output_dir / "text-encoder.onnx"),
         per_channel=False,
         reduce_range=False,
         weight_type=QuantType.QUInt8,
@@ -440,7 +440,7 @@ def export_geometry_encoder(model: Sam3Model, output_dir: Path, device: str = "c
     )
     quantize_dynamic(
         model_input=str(output_dir / "geometry-encoder.onnx"),
-        model_output=str(output_dir / "geometry-encoder_q.onnx"),
+        model_output=str(output_dir / "geometry-encoder.onnx"),
         per_channel=False,
         reduce_range=False,
         weight_type=QuantType.QUInt8,
@@ -488,7 +488,7 @@ def export_decoder(model: Sam3Model, output_dir: Path, device: str = "cuda"):
     )
     quantize_dynamic(
         model_input=str(output_dir / "decoder.onnx"),
-        model_output=str(output_dir / "decoder_q.onnx"),
+        model_output=str(output_dir / "decoder.onnx"),
         per_channel=False,
         reduce_range=False,
         weight_type=QuantType.QUInt8,
@@ -508,7 +508,7 @@ def main():
         "--model-path", type=str, required=True, help="Path to SAM3 model directory"
     )
     parser.add_argument(
-        "--output-dir", type=str, default="onnx-models", help="Output directory"
+        "--output-dir", type=str, default="sam3", help="Output directory"
     )
     parser.add_argument("--device", type=str, default="cpu")
     args = parser.parse_args()
