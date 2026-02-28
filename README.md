@@ -1,60 +1,44 @@
-## Segment Anything Model 3 CPP Wrapper for macOS and Ubuntu GPU
+## Segment Anything Model 3 CPP Wrapper for macOS
 
 This code is to run a [Segment Anything Model 3](https://github.com/facebookresearch/sam3) ONNX model in c++ code and implemented on the macOS app [RectLabel](https://rectlabel.com).
 
 <video src="https://github.com/user-attachments/assets/812776c3-bfad-4f80-99e1-6141b21c024b" controls="controls" muted="muted" class="width-fit" style="max-height:640px; min-height: 200px"></video>
 
-Install [CUDA, cuDNN, PyTorch, and ONNX Runtime](https://rectlabel.com/pytorch/).
-
-Install [Segment Anything Model 3](https://github.com/facebookresearch/sam2).
+Install SAM 3.
 
 ```bash
 git clone https://github.com/facebookresearch/sam3.git
 cd sam3
 pip install -e .
-
-git clone https://github.com/facebookresearch/sam2.git && cd sam2
-pip install -e .
-cd checkpoints
-./download_ckpts.sh
-cd ..
-cp sam2/configs/sam2.1/*.yaml sam2
 ```
 
-Install Segment Anything Model 2 CPP Wrapper.
+Add Apple CPU support from [this PR](https://github.com/facebookresearch/sam3/pull/258).
 ```bash
-git clone https://github.com/ryouchinsa/sam-cpp-macos.git
-cp sam-cpp-macos/export_onnx.py .
-cp sam-cpp-macos/david-tomaseti-Vw2HZQ1FGjU-unsplash.jpg .
+gh pr checkout 258, ok
 ```
 
-Export an ONNX model and check how the ONNX model works.
+Download SAM 3 model from Hugging Face [repo](https://huggingface.co/facebook/sam3) and put them into sam3-model folder. 
 
+Install Segment Anything Model 3 CPP Wrapper.
 ```bash
-python export_onnx.py --mode export
-python export_onnx.py --mode import
-cp -r checkpoints/sam2.1_tiny sam-cpp-macos
-cd sam-cpp-macos
+git clone https://github.com/ryouchinsa/sam3-cpp-macos.git
+cd sam3-cpp-macos
 ```
 
-Download exported SAM 2.1 ONNX models.
-- [SAM 2.1 Tiny](https://huggingface.co/rectlabel/segment-anything-onnx-models/resolve/main/sam2.1_tiny.zip)
-- [SAM 2.1 Small](https://huggingface.co/rectlabel/segment-anything-onnx-models/resolve/main/sam2.1_small.zip)
-- [SAM 2.1 BasePlus](https://huggingface.co/rectlabel/segment-anything-onnx-models/resolve/main/sam2.1_base_plus.zip)
-- [SAM 2.1 Large](https://huggingface.co/rectlabel/segment-anything-onnx-models/resolve/main/sam2.1_large.zip)
+Export ONNX models.
+```bash
+python export.py --all --model-path ../sam3-model
+```
+
+Download exported [SAM 3 ONNX models](https://huggingface.co/rectlabel/segment-anything-onnx-models/resolve/main/sam3.zip). 
 
 Build and run.
 
 ```bash
-# macOS
-cmake -S . -B build -DONNXRUNTIME_ROOT_DIR=/Users/ryo/Downloads/onnxruntime-osx-universal2-1.20.0
-# Ubuntu GPU
-cmake -S . -B build -DONNXRUNTIME_ROOT_DIR=/root/onnxruntime-linux-x64-gpu-1.20.0
-
+cmake -S . -B build -DONNXRUNTIME_ROOT_DIR=/Users/ryo/Downloads/onnxruntime-osx-universal2-1.23.2
 cmake --build build
 
-# macOS
-./build/sam_cpp_test -encoder="sam2.1_tiny/sam2.1_tiny_preprocess.onnx" -decoder="sam2.1_tiny/sam2.1_tiny.onnx" -image="david-tomaseti-Vw2HZQ1FGjU-unsplash.jpg" -device="cpu"
-# Ubuntu GPU
-./build/sam_cpp_test -encoder="sam2.1_tiny/sam2.1_tiny_preprocess.onnx" -decoder="sam2.1_tiny/sam2.1_tiny.onnx" -image="david-tomaseti-Vw2HZQ1FGjU-unsplash.jpg" -device="cuda:0"
+./build/sam3_cpp_test -vision_encoder="sam3/vision-encoder_q.onnx" -text_encoder="sam3/text-encoder_q.onnx" -geometry_encoder="sam3/geometry-encoder_q.onnx" -decoder="sam3/decoder_q.onnx" -tokenizer="sam3/tokenizer.json" -image="david-tomaseti-Vw2HZQ1FGjU-unsplash.jpg" -device="cpu" -text="zebra" -threshold=0.5
+
+./build/sam3_cpp_test -vision_encoder="sam3/vision-encoder_q.onnx" -text_encoder="sam3/text-encoder_q.onnx" -geometry_encoder="sam3/geometry-encoder_q.onnx" -decoder="sam3/decoder_q.onnx" -tokenizer="sam3/tokenizer.json" -image="david-tomaseti-Vw2HZQ1FGjU-unsplash.jpg" -device="cpu" -boxes="pos:124,113,183,329" -threshold=0.5
 ```
