@@ -39,7 +39,7 @@ cmake -S . -B build -DONNXRUNTIME_ROOT_DIR=/Users/ryo/Downloads/onnxruntime-osx-
 
 cmake --build build
 
-./build/sam3_cpp_test -vision_encoder="sam3/vision-encoder.onnx" -text_encoder="sam3/text-encoder.onnx" -geometry_encoder="sam3/geometry-encoder.onnx" -decoder="sam3/decoder.onnx" -tokenizer="sam3/tokenizer.json" -image="david-tomaseti-Vw2HZQ1FGjU-unsplash.jpg" -device="cpu" -text="zebra" -threshold=0.5
+./build/sam3_cpp_test -vision_encoder="sam3/vision-encoder.onnx" -text_encoder="sam3/text-encoder.onnx" -geometry_encoder="sam3/geometry-encoder.onnx" -decoder="sam3/decoder.onnx" -tokenizer="sam3-model/tokenizer.json" -image="david-tomaseti-Vw2HZQ1FGjU-unsplash.jpg" -device="cpu" -text="zebra" -threshold=0.5
 
-./build/sam3_cpp_test -vision_encoder="sam3/vision-encoder.onnx" -text_encoder="sam3/text-encoder.onnx" -geometry_encoder="sam3/geometry-encoder.onnx" -decoder="sam3/decoder.onnx" -tokenizer="sam3/tokenizer.json" -image="david-tomaseti-Vw2HZQ1FGjU-unsplash.jpg" -device="cpu" -boxes="pos:124,113,183,329" -threshold=0.5
+./build/sam3_cpp_test -vision_encoder="sam3/vision-encoder.onnx" -text_encoder="sam3/text-encoder.onnx" -geometry_encoder="sam3/geometry-encoder.onnx" -decoder="sam3/decoder.onnx" -tokenizer="sam3-model/tokenizer.json" -image="david-tomaseti-Vw2HZQ1FGjU-unsplash.jpg" -device="cpu" -boxes="pos:124,113,183,329" -threshold=0.5
 ```
