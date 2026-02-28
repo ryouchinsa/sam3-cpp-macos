@@ -21,7 +21,7 @@ cd sam3-cpp-macos
 
 Download SAM 3 model from [repo](https://huggingface.co/facebook/sam3) and put them into sam3-model folder. 
 
-Export ONNX models.
+Export ONNX models. This script is originated from [sam3-image](https://github.com/jamjamjon/usls/tree/main/scripts/sam3-image).
 ```bash
 python export.py --all --model-path sam3-model
 ```
