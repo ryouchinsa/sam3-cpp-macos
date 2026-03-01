@@ -10,9 +10,15 @@ if (APPLE)
 else()
   set(onnxruntime_lib ${ONNXRUNTIME_ROOT_DIR}/lib/libonnxruntime.so)
 endif()
-set(libsentencepiece_lib ${TOKENIZERS_ROOT_DIR}/libs_universal/libsentencepiece.a)
-set(libtokenizers_c_lib ${TOKENIZERS_ROOT_DIR}/libs_universal/libtokenizers_c.a)
-set(libtokenizers_cpp_lib ${TOKENIZERS_ROOT_DIR}/libs_universal/libtokenizers_cpp.a)
+
+add_library(libsentencepiece_lib STATIC IMPORTED)
+set_property(TARGET libsentencepiece_lib PROPERTY IMPORTED_LOCATION ${TOKENIZERS_ROOT_DIR}/libs_universal/libsentencepiece.a)
+
+add_library(libtokenizers_c_lib STATIC IMPORTED)
+set_property(TARGET libtokenizers_c_lib PROPERTY IMPORTED_LOCATION ${TOKENIZERS_ROOT_DIR}/libs_universal/libtokenizers_c.a)
+
+add_library(libtokenizers_cpp_lib STATIC IMPORTED)
+set_property(TARGET libtokenizers_cpp_lib PROPERTY IMPORTED_LOCATION ${TOKENIZERS_ROOT_DIR}/libs_universal/libtokenizers_cpp.a)
 
 target_include_directories(
   sam3_cpp_lib PUBLIC 
@@ -23,9 +29,9 @@ target_include_directories(
 target_link_libraries(
   sam3_cpp_lib PUBLIC
   ${onnxruntime_lib}
-  ${libsentencepiece_lib}
-  ${libtokenizers_c_lib}
-  ${libtokenizers_cpp_lib}
+  libsentencepiece_lib
+  libtokenizers_c_lib
+  libtokenizers_cpp_lib
   ${OpenCV_LIBS}
   gflags
 )
