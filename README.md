@@ -9,19 +9,34 @@ We recommend working through this blog post side-by-side with the [Google Colab 
 
 Install [CUDA, cuDNN, PyTorch, and ONNX Runtime](https://rectlabel.com/pytorch/).
 
-Install SAM 3 and add Apple CPU support from [this PR](https://github.com/facebookresearch/sam3/pull/258).
+Install Segment Anything Model 3 CPP Wrapper.
+
+```bash
+git clone https://github.com/ryouchinsa/sam3-cpp-macos.git
+```
+
+Install SAM 3.
 
 ```bash
 git clone https://github.com/facebookresearch/sam3.git
-cd sam3
-gh pr checkout 258
-pip install -e .
 ```
 
-Install Segment Anything Model 3 CPP Wrapper.
+For macOS, add Apple CPU support from [this PR](https://github.com/facebookresearch/sam3/pull/258).
+
 ```bash
-git clone https://github.com/ryouchinsa/sam3-cpp-macos.git
-cd sam3-cpp-macos
+gh pr checkout 258
+```
+
+For Ubuntu GPU, use numpy>=2.0.
+
+```bash
+cp  sam3-cpp-macos/pyproject.toml sam3/
+```
+
+Install dependencies.
+
+```bash
+pip install -e .
 ```
 
 Download SAM 3 model from [repo](https://huggingface.co/facebook/sam3) and put them into sam3-model folder. 
