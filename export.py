@@ -347,14 +347,15 @@ class DecoderWrapper(nn.Module):
         )
 
 
-def export_vision_encoder(model: Sam3Model, output_dir: Path, device: str = "cuda"):
+def export_vision_encoder(model: Sam3Model, output_dir: Path, device: str = "cuda", quantize: bool = False):
     print("Exporting Vision Encoder...")
     wrapper = VisionEncoderWrapper(model, device=device).to(device).eval()
+    onnx_file = "vision-encoder.onnx"
 
     torch.onnx.export(
         wrapper,
         (torch.randn(1, 3, 1008, 1008, device=device),),
-        str(output_dir / "vision-encoder.onnx"),
+        str(output_dir / onnx_file),
         input_names=["images"],
         output_names=["fpn_feat_0", "fpn_feat_1", "fpn_feat_2", "fpn_pos_2"],
         opset_version=17,
@@ -368,19 +369,21 @@ def export_vision_encoder(model: Sam3Model, output_dir: Path, device: str = "cud
             "fpn_pos_2": {0: "batch"},
         },
     )
-    quantize_dynamic(
-        model_input=str(output_dir / "vision-encoder.onnx"),
-        model_output=str(output_dir / "vision-encoder.onnx"),
-        per_channel=False,
-        reduce_range=False,
-        weight_type=QuantType.QUInt8,
-    )
-    print(f"  ✓ Saved: {output_dir / 'vision-encoder.onnx'}")
+    if quantize:
+        quantize_dynamic(
+            model_input=str(output_dir / onnx_file),
+            model_output=str(output_dir / onnx_file),
+            per_channel=False,
+            reduce_range=False,
+            weight_type=QuantType.QUInt8,
+        )
+    print(f"  ✓ Saved: {output_dir / onnx_file}")
 
 
-def export_text_encoder(model: Sam3Model, output_dir: Path, device: str = "cuda"):
+def export_text_encoder(model: Sam3Model, output_dir: Path, device: str = "cuda", quantize: bool = False):
     print("Exporting Text Encoder...")
     wrapper = TextEncoderWrapper(model).to(device).eval()
+    onnx_file = "text-encoder.onnx"
 
     torch.onnx.export(
         wrapper,
@@ -388,7 +391,7 @@ def export_text_encoder(model: Sam3Model, output_dir: Path, device: str = "cuda"
             torch.randint(0, 49408, (1, 32), device=device),
             torch.ones(1, 32, dtype=torch.long, device=device),
         ),
-        str(output_dir / "text-encoder.onnx"),
+        str(output_dir / onnx_file),
         input_names=["input_ids", "attention_mask"],
         output_names=["text_features", "text_mask"],
         opset_version=17,
@@ -401,19 +404,21 @@ def export_text_encoder(model: Sam3Model, output_dir: Path, device: str = "cuda"
             "text_mask": {0: "batch"},
         },
     )
-    quantize_dynamic(
-        model_input=str(output_dir / "text-encoder.onnx"),
-        model_output=str(output_dir / "text-encoder.onnx"),
-        per_channel=False,
-        reduce_range=False,
-        weight_type=QuantType.QUInt8,
-    )
-    print(f"  ✓ Saved: {output_dir / 'text-encoder.onnx'}")
+    if quantize:
+        quantize_dynamic(
+            model_input=str(output_dir / onnx_file),
+            model_output=str(output_dir / onnx_file),
+            per_channel=False,
+            reduce_range=False,
+            weight_type=QuantType.QUInt8,
+        )
+    print(f"  ✓ Saved: {output_dir / onnx_file}")
 
 
-def export_geometry_encoder(model: Sam3Model, output_dir: Path, device: str = "cuda"):
+def export_geometry_encoder(model: Sam3Model, output_dir: Path, device: str = "cuda", quantize: bool = False):
     print("Exporting Geometry Encoder...")
     wrapper = GeometryEncoderWrapper(model).to(device).eval()
+    onnx_file = "geometry-encoder.onnx"
 
     torch.onnx.export(
         wrapper,
@@ -423,7 +428,7 @@ def export_geometry_encoder(model: Sam3Model, output_dir: Path, device: str = "c
             torch.randn(1, 256, 72, 72, device=device),
             torch.randn(1, 256, 72, 72, device=device),
         ),
-        str(output_dir / "geometry-encoder.onnx"),
+        str(output_dir / onnx_file),
         input_names=["input_boxes", "input_boxes_labels", "fpn_feat_2", "fpn_pos_2"],
         output_names=["geometry_features", "geometry_mask"],
         opset_version=17,
@@ -438,19 +443,21 @@ def export_geometry_encoder(model: Sam3Model, output_dir: Path, device: str = "c
             "geometry_mask": {0: "batch", 1: "num_prompts"},
         },
     )
-    quantize_dynamic(
-        model_input=str(output_dir / "geometry-encoder.onnx"),
-        model_output=str(output_dir / "geometry-encoder.onnx"),
-        per_channel=False,
-        reduce_range=False,
-        weight_type=QuantType.QUInt8,
-    )
-    print(f"  ✓ Saved: {output_dir / 'geometry-encoder.onnx'}")
+    if quantize:
+        quantize_dynamic(
+            model_input=str(output_dir / onnx_file),
+            model_output=str(output_dir / onnx_file),
+            per_channel=False,
+            reduce_range=False,
+            weight_type=QuantType.QUInt8,
+        )
+    print(f"  ✓ Saved: {output_dir / onnx_file}")
 
 
-def export_decoder(model: Sam3Model, output_dir: Path, device: str = "cuda"):
+def export_decoder(model: Sam3Model, output_dir: Path, device: str = "cuda", quantize: bool = False):
     print("Exporting Decoder...")
     wrapper = DecoderWrapper(model).to(device).eval()
+    onnx_file = "decoder.onnx"
 
     torch.onnx.export(
         wrapper,
@@ -462,7 +469,7 @@ def export_decoder(model: Sam3Model, output_dir: Path, device: str = "cuda"):
             torch.randn(1, 32, 256, device=device),
             torch.ones(1, 32, dtype=torch.bool, device=device),
         ),
-        str(output_dir / "decoder.onnx"),
+        str(output_dir / onnx_file),
         input_names=[
             "fpn_feat_0",
             "fpn_feat_1",
@@ -486,14 +493,15 @@ def export_decoder(model: Sam3Model, output_dir: Path, device: str = "cuda"):
             "presence_logits": {0: "batch"},
         },
     )
-    quantize_dynamic(
-        model_input=str(output_dir / "decoder.onnx"),
-        model_output=str(output_dir / "decoder.onnx"),
-        per_channel=False,
-        reduce_range=False,
-        weight_type=QuantType.QUInt8,
-    )
-    print(f"  ✓ Saved: {output_dir / 'decoder.onnx'}")
+    if quantize:
+        quantize_dynamic(
+            model_input=str(output_dir / onnx_file),
+            model_output=str(output_dir / onnx_file),
+            per_channel=False,
+            reduce_range=False,
+            weight_type=QuantType.QUInt8,
+        )
+    print(f"  ✓ Saved: {output_dir / onnx_file}")
 
 
 def main():
@@ -511,6 +519,7 @@ def main():
         "--output-dir", type=str, default="sam3", help="Output directory"
     )
     parser.add_argument("--device", type=str, default="cpu")
+    parser.add_argument("--quantize", action="store_true", help="Quantize models")
     args = parser.parse_args()
 
     if not args.module and not args.all:
@@ -532,7 +541,7 @@ def main():
                 "text": export_text_encoder,
                 "geometry": export_geometry_encoder,
                 "decoder": export_decoder,
-            }[m](model, output_dir, args.device)
+            }[m](model, output_dir, args.device, args.quantize)
 
     print(f"\n✓ Export complete! Models saved to: {output_dir}")
 
