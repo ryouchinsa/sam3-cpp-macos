@@ -17,44 +17,80 @@ git clone https://github.com/ryouchinsa/sam3-cpp-macos.git
 
 Install SAM 3.
 
+For macOS, add Apple CPU support from [this PR](https://github.com/facebookresearch/sam3/pull/258).
 ```bash
 git clone https://github.com/facebookresearch/sam3.git
-```
-
-For macOS, add Apple CPU support from [this PR](https://github.com/facebookresearch/sam3/pull/258).
-
-```bash
+cd sam3
 gh pr checkout 258
+pip install -e .
+cd ..
 ```
 
 For Ubuntu GPU, use numpy>=2.0.
 
 ```bash
+git clone https://github.com/facebookresearch/sam3.git
 cp  sam3-cpp-macos/pyproject.toml sam3/
-```
-
-Install dependencies.
-
-```bash
+cd sam3
 pip install -e .
+cd ..
 ```
+Download SAM 3 model from [Hugging Face](https://huggingface.co/facebook/sam3).
 
-Download SAM 3 model from [repo](https://huggingface.co/facebook/sam3) and put them into sam3-model folder. 
-
-Export ONNX models. This script is originated from [sam3-image](https://github.com/jamjamjon/usls/tree/main/scripts/sam3-image).
 ```bash
-python export.py --all --model-path sam3-model
+hf auth login
+hf download facebook/sam3 model.safetensors tokenizer.json
 ```
 
-Download exported SAM 3 ONNX models from [repo](https://huggingface.co/rectlabel/segment-anything-onnx-models/resolve/main/sam3.zip). 
+Export ONNX models. This script is originated from [sam3-image](https://github.com/jamjamjon/usls/tree/main/scripts/sam3-image). Edit --model-path according to your downloaded huggingface path.
 
-Download ONNX Runtime from [repo](https://github.com/microsoft/onnxruntime/releases/download/v1.23.2/onnxruntime-osx-universal2-1.23.2.tgz).
+```bash
+cd sam3-cpp-macos
+python export.py --all --model-path sam3-model
+cd ..
+```
 
-Download tokenizers-cpp from [repo](https://huggingface.co/rectlabel/segment-anything-onnx-models/resolve/main/tokenizers-cpp.zip).
+If you skip exporting, download exported SAM 3 ONNX models from [Hugging Face](https://huggingface.co/rectlabel/segment-anything-onnx-models/resolve/main/sam3.zip). 
+
+Install tokenizers-cpp.
+
+For macOS, download tokenizers-cpp from [Hugging Face](https://huggingface.co/rectlabel/segment-anything-onnx-models/resolve/main/tokenizers-cpp.zip).
+
+For Ubuntu GPU.
+
+```bash
+git clone --recursive https://github.com/mlc-ai/tokenizers-cpp.git
+
+cp /content/sam3-cpp-macos/tokenizers-cpp/CMakeLists.txt .
+cp /content/sam3-cpp-macos/tokenizers-cpp/msgpack/CMakeLists.txt msgpack
+cp /content/sam3-cpp-macos/tokenizers-cpp/sentencepiece/CMakeLists.txt sentencepiece
+
+apt update
+apt install -y curl gcc make
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+
+import os
+os.environ['CARGO_HOME'] = '/root/.cargo'
+os.environ['PATH'] = f"{os.environ['CARGO_HOME']}/bin:{os.environ['PATH']}"
+
+rustc --version
+cargo --version
+
+cd tokenizers-cpp/example
+./build_and_run.sh
+cd ..
+
+mkdir lib
+cp ./example/build/tokenizers/sentencepiece/src/libsentencepiece.a lib/
+cp ./example/build/tokenizers/libtokenizers_c.a lib/
+cp ./example/build/tokenizers/libtokenizers_cpp.a lib/
+cd ..
+```
 
 Build and run.
 
 ```bash
+cd sam3-cpp-macos
 cmake -S . -B build -DONNXRUNTIME_ROOT_DIR=/Users/ryo/Downloads/onnxruntime-osx-universal2-1.23.2 -DTOKENIZERS_ROOT_DIR=/Users/ryo/Downloads/tokenizers-cpp
 
 cmake --build build
