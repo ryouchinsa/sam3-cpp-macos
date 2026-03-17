@@ -10,6 +10,20 @@ std::vector<std::string> split(const std::string &text, const char &separator){
   return strings;
 }
 
+std::tuple<std::vector<std::vector<cv::Rect2f>>, std::vector<std::vector<int>>> parse_box_list_prompts(const std::string &boxes, const cv::Size &imageSize){
+  std::vector<std::vector<cv::Rect2f>> rects_list;
+  std::vector<std::vector<int>> labels_list;
+  std::vector<std::string> split_dash = split(boxes, '-');
+  for(int i = 0; i < split_dash.size(); i++){
+    std::cout<<split_dash[i]<<std::endl;
+    auto [rects, labels] = parse_box_prompts(split_dash[i]);
+    normalizeRects(&rects, imageSize);
+    rects_list.push_back(rects);
+    labels_list.push_back(labels);
+  }
+  return std::make_tuple(rects_list, labels_list);
+}
+
 std::tuple<std::vector<cv::Rect2f>, std::vector<int>> parse_box_prompts(const std::string &boxes){
   std::vector<cv::Rect2f> rects;
   std::vector<int> labels;

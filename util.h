@@ -11,6 +11,7 @@
 #include <algorithm> 
 
 std::vector<std::string> split(const std::string &text, const char &separator);
+std::tuple<std::vector<std::vector<cv::Rect2f>>, std::vector<std::vector<int>>> parse_box_list_prompts(const std::string &boxes, const cv::Size &imageSize);
 std::tuple<std::vector<cv::Rect2f>, std::vector<int>> parse_box_prompts(const std::string &boxes);
 void normalizeRects(std::vector<cv::Rect2f> *rects, const cv::Size &imageSize);
 bool modelExists(const std::string& modelPath);

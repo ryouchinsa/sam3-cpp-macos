@@ -217,7 +217,7 @@ bool Sam3::encodeTextBatch(const std::vector<std::string> &text_list){
           }
         }
       }else{
-        for(int i = 0; i < inputTensorValues[0].size(); i++){
+        for(int i = 0; i < inputShapeText[0][1]; i++){
           inputTensorValues[0][i + offset] = 49407;
           if(i == 0){
             inputTensorValues[1][i + offset] = 1;
@@ -261,18 +261,25 @@ bool Sam3::encodeTextBatch(const std::vector<std::string> &text_list){
   return true;
 }
 
-void Sam3::alignBoxesBatchSizeToText(std::vector<std::vector<cv::Rect2f>> *rects_list, std::vector<std::vector<int>> *labels_list){
-  int batchSizeText = (int)inputShapeText[0][0];
-  int batchSizeBoxes = (int)(*rects_list).size();
-  if(batchSizeBoxes == 0){
+void Sam3::alignTextsAndBoxesBatchSize(std::vector<std::string> *text_list, std::vector<std::vector<cv::Rect2f>> *rects_list, std::vector<std::vector<int>> *labels_list){
+  int boxNum = (int)(*rects_list).size();
+  if(boxNum == 0){
     return;
+  }
+  int batchSizeBoxes = boxNum;
+  int textNum = (int)(*text_list).size();
+  int batchSizeText = textNum;
+  if(batchSizeText == 0){
+    batchSizeText = 1;
   }
   if(batchSizeText == batchSizeBoxes){
     return;
   }
   if(batchSizeBoxes > batchSizeText){
-    (*rects_list).resize(batchSizeText);
-    (*labels_list).resize(batchSizeText);
+    int addNum = batchSizeBoxes - textNum;
+    for(int i = 0; i < addNum; i++){
+      (*text_list).push_back("");
+    }
     return;
   }
   int addNum = batchSizeText - batchSizeBoxes;

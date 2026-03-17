@@ -51,7 +51,7 @@ class Sam3 {
   void preprocessingStart();
   void preprocessingEnd();
   bool encodeTextBatch(const std::vector<std::string> &text_list);
-  void alignBoxesBatchSizeToText(std::vector<std::vector<cv::Rect2f>> *rects_list, std::vector<std::vector<int>> *labels_list);
+  void alignTextsAndBoxesBatchSize(std::vector<std::string> *text_list, std::vector<std::vector<cv::Rect2f>> *rects_list, std::vector<std::vector<int>> *labels_list);
   void prepareOutputVisionBatch(int batchNum);
   void setOutputVisionToInputTensors(int batchSize, int begin, int end, std::vector<Ort::Value> *inputTensors);
   bool encodeBoxesBatch(const std::vector<std::vector<cv::Rect2f>> &rects_list, const std::vector<std::vector<int>> &labels_list);

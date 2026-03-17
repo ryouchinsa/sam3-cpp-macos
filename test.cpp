@@ -39,9 +39,11 @@ int main(int argc, char** argv) {
     std::cout<<"preprocessImage error"<<std::endl;
     return 1;
   }
-  std::cout<<"Encode text started"<<std::endl;
+  std::cout<<"Encode text and boxes started"<<std::endl;
   begin = std::chrono::steady_clock::now();
   std::vector<std::string> text_list = split(FLAGS_text, ',');
+  auto [rects_list, labels_list] = parse_box_list_prompts(FLAGS_boxes, imageSize);
+  sam3.alignTextsAndBoxesBatchSize(&text_list, &rects_list, &labels_list);
   bool successEncodeText = sam3.encodeTextBatch(text_list);
   end = std::chrono::steady_clock::now();
   std::cout << "sec = " << (std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count()) / 1000000.0 <<std::endl;
@@ -49,15 +51,7 @@ int main(int argc, char** argv) {
     std::cout<<"Encode text error"<<std::endl;
     return 1;
   }
-  std::cout<<"Encode boxes started"<<std::endl;
   begin = std::chrono::steady_clock::now();
-  auto [rects, labels] = parse_box_prompts(FLAGS_boxes);
-  normalizeRects(&rects, imageSize);
-  std::vector<std::vector<cv::Rect2f>> rects_list;
-  std::vector<std::vector<int>> labels_list;
-  rects_list.push_back(rects);
-  labels_list.push_back(labels);
-  sam3.alignBoxesBatchSizeToText(&rects_list, &labels_list);
   bool successEncodeBoxes = sam3.encodeBoxesBatch(rects_list, labels_list);
   end = std::chrono::steady_clock::now();
   std::cout << "sec = " << (std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count()) / 1000000.0 <<std::endl;
