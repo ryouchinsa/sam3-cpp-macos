@@ -41,7 +41,8 @@ int main(int argc, char** argv) {
   }
   std::cout<<"Encode text started"<<std::endl;
   begin = std::chrono::steady_clock::now();
-  bool successEncodeText = sam3.encodeText(FLAGS_text);
+  std::vector<std::string> text_list = split(FLAGS_text, ',');
+  bool successEncodeText = sam3.encodeTextBatch(text_list);
   end = std::chrono::steady_clock::now();
   std::cout << "sec = " << (std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count()) / 1000000.0 <<std::endl;
   if(!successEncodeText){
@@ -52,7 +53,12 @@ int main(int argc, char** argv) {
   begin = std::chrono::steady_clock::now();
   auto [rects, labels] = parse_box_prompts(FLAGS_boxes);
   normalizeRects(&rects, imageSize);
-  bool successEncodeBoxes = sam3.encodeBoxes(rects, labels);
+  std::vector<std::vector<cv::Rect2f>> rects_list;
+  std::vector<std::vector<int>> labels_list;
+  rects_list.push_back(rects);
+  labels_list.push_back(labels);
+  sam3.alignBoxesBatchSizeToText(&rects_list, &labels_list);
+  bool successEncodeBoxes = sam3.encodeBoxesBatch(rects_list, labels_list);
   end = std::chrono::steady_clock::now();
   std::cout << "sec = " << (std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count()) / 1000000.0 <<std::endl;
   if(!successEncodeBoxes){
@@ -63,7 +69,7 @@ int main(int argc, char** argv) {
   begin = std::chrono::steady_clock::now();
   float threshold = FLAGS_threshold;
   bool skipDecode = false;
-  auto [masks, boxes] = sam3.decode(threshold, imageSize, skipDecode);
+  auto [masks, boxes] = sam3.decodeBatch(threshold, imageSize, skipDecode);
   end = std::chrono::steady_clock::now();
   std::cout << "sec = " << (std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count()) / 1000000.0 <<std::endl;
   if(masks.size() == 0){

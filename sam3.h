@@ -23,7 +23,9 @@ class Sam3 {
   Ort::MemoryInfo memoryInfo{Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault)};
   std::vector<int64_t> inputShapeVision;
   std::vector<int64_t> outputShapeVision[4];
+  std::vector<int64_t> outputShapeVisionBatch[4];
   std::vector<float> outputVision[4];
+  std::vector<float> outputVisionBatch[4];
   std::vector<int64_t> inputShapeText[2];
   std::vector<int64_t> outputShapeText[2];
   std::vector<float> outputText0;
@@ -48,9 +50,12 @@ class Sam3 {
   bool preprocessImage(const cv::Mat& image);
   void preprocessingStart();
   void preprocessingEnd();
-  bool encodeText(const std::string& text);
-  bool encodeBoxes(const std::vector<cv::Rect2f> &rects, const std::vector<int> &labels);
-  std::tuple<std::vector<cv::Mat>, std::vector<int>> decode(float threshold, const cv::Size &imageSize, bool skipDecode);
+  bool encodeTextBatch(const std::vector<std::string> &text_list);
+  void alignBoxesBatchSizeToText(std::vector<std::vector<cv::Rect2f>> *rects_list, std::vector<std::vector<int>> *labels_list);
+  void prepareOutputVisionBatch(int batchNum);
+  void setOutputVisionToInputTensors(int batchSize, int begin, int end, std::vector<Ort::Value> *inputTensors);
+  bool encodeBoxesBatch(const std::vector<std::vector<cv::Rect2f>> &rects_list, const std::vector<std::vector<int>> &labels_list);
+  std::tuple<std::vector<cv::Mat>, std::vector<int>> decodeBatch(float threshold, const cv::Size &imageSize, bool skipDecode);
   std::tuple<std::vector<cv::Mat>, std::vector<int>> changeThreshold(float threshold, const cv::Size &imageSize);
   bool isDecoderEmpty();
 };
