@@ -27,11 +27,11 @@ int main(int argc, char** argv) {
     return 1;
   }
   std::cout<<"preprocessImage started"<<std::endl;
+  begin = std::chrono::steady_clock::now();
   cv::Mat image = cv::imread(FLAGS_image, cv::IMREAD_COLOR);
   cv::Size imageSize = cv::Size(image.cols, image.rows);
   cv::Size inputSize = sam3.getInputSize();
   cv::resize(image, image, inputSize);
-  begin = std::chrono::steady_clock::now();
   bool successPreprocessImage = sam3.preprocessImage(image);
   end = std::chrono::steady_clock::now();
   std::cout << "sec = " << (std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count()) / 1000000.0 <<std::endl;
@@ -39,7 +39,7 @@ int main(int argc, char** argv) {
     std::cout<<"preprocessImage error"<<std::endl;
     return 1;
   }
-  std::cout<<"Encode text and boxes started"<<std::endl;
+  std::cout<<"Encode text tarted"<<std::endl;
   begin = std::chrono::steady_clock::now();
   std::vector<std::string> text_list = split(FLAGS_text, ',');
   auto [rects_list, labels_list] = parse_box_list_prompts(FLAGS_boxes, imageSize);
@@ -51,6 +51,7 @@ int main(int argc, char** argv) {
     std::cout<<"Encode text error"<<std::endl;
     return 1;
   }
+  std::cout<<"Encode boxes started"<<std::endl;
   begin = std::chrono::steady_clock::now();
   bool successEncodeBoxes = sam3.encodeBoxesBatch(rects_list, labels_list);
   end = std::chrono::steady_clock::now();

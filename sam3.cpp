@@ -26,6 +26,8 @@ bool Sam3::clearLoadModel(){
     for(int i = 0; i < 4; i++){
       outputShapeVision[i].resize(0);
       outputVision[i].resize(0);
+      outputShapeVisionBatch[i].resize(0);
+      outputVisionBatch[i].resize(0);
     }
     for(int i = 0; i < 2; i++){
       inputShapeText[i].resize(0);

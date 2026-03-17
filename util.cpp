@@ -15,7 +15,6 @@ std::tuple<std::vector<std::vector<cv::Rect2f>>, std::vector<std::vector<int>>> 
   std::vector<std::vector<int>> labels_list;
   std::vector<std::string> split_dash = split(boxes, '-');
   for(int i = 0; i < split_dash.size(); i++){
-    std::cout<<split_dash[i]<<std::endl;
     auto [rects, labels] = parse_box_prompts(split_dash[i]);
     normalizeRects(&rects, imageSize);
     rects_list.push_back(rects);
