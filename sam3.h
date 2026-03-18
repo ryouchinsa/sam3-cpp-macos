@@ -42,6 +42,9 @@ class Sam3 {
   Sam3();
   ~Sam3();
   bool clearLoadModel();
+  void clearVisionBatch();
+  void clearDecoder();
+  bool isDecoderEmpty();
   void terminatePreprocessing();
   bool loadModel(const std::string& visionPath, const std::string& textPath, const std::string& geometryPath, const std::string& decoderPath, const std::string& tokenizerPath, int threadsNumber, const std::string device);
   void loadingStart();
@@ -57,7 +60,6 @@ class Sam3 {
   bool encodeBoxesBatch(const std::vector<std::vector<cv::Rect2f>> &rects_list, const std::vector<std::vector<int>> &labels_list);
   std::tuple<std::vector<cv::Mat>, std::vector<int>> decodeBatch(float threshold, const cv::Size &imageSize, bool skipDecode);
   std::tuple<std::vector<cv::Mat>, std::vector<int>> changeThreshold(float threshold, const cv::Size &imageSize);
-  bool isDecoderEmpty();
 };
 
 #endif

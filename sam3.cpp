@@ -26,9 +26,8 @@ bool Sam3::clearLoadModel(){
     for(int i = 0; i < 4; i++){
       outputShapeVision[i].resize(0);
       outputVision[i].resize(0);
-      outputShapeVisionBatch[i].resize(0);
-      outputVisionBatch[i].resize(0);
     }
+    clearVisionBatch();
     for(int i = 0; i < 2; i++){
       inputShapeText[i].resize(0);
       outputShapeText[i].resize(0);
@@ -40,14 +39,32 @@ bool Sam3::clearLoadModel(){
     }
     outputBoxes0.resize(0);
     outputBoxes1.resize(0);
-    for(int i = 0; i < 4; i++){
-      outputShapeDecoder[i].resize(0);
-      outputDecoder[i].resize(0);
-    }
+    clearDecoder();
   }catch(Ort::Exception& e){
     return false;
   }
   return true;
+}
+
+void Sam3::clearVisionBatch(){
+  for(int i = 0; i < 4; i++){
+    outputShapeVisionBatch[i].resize(0);
+    outputVisionBatch[i].resize(0);
+  }
+}
+
+void Sam3::clearDecoder(){
+  for(int i = 0; i < 4; i++){
+    outputShapeDecoder[i].resize(0);
+    outputDecoder[i].resize(0);
+  }
+}
+
+bool Sam3::isDecoderEmpty(){
+  if(outputDecoder[0].size() == 0){
+    return true;
+  }
+  return false;
 }
 
 void Sam3::terminatePreprocessing(){
@@ -295,14 +312,15 @@ void Sam3::alignTextsAndBoxesBatchSize(std::vector<std::string> *text_list, std:
 
 void Sam3::prepareOutputVisionBatch(int batchSize){
   if(batchSize == 1){
+    clearVisionBatch();
     return;
   }
   std::vector<int64_t> shape = outputShapeVisionBatch[0];
   if(shape.size() > 0 && shape[0] == batchSize){
     return;
   }
+  clearVisionBatch();
   for(int i = 0; i < 4; i++){
-    outputVisionBatch[i].resize(0);
     for(int b = 0; b < batchSize; b++){
       outputVisionBatch[i].insert(outputVisionBatch[i].end(), outputVision[i].begin(), outputVision[i].end());
     }
@@ -414,6 +432,7 @@ std::tuple<std::vector<cv::Mat>, std::vector<int>> Sam3::decodeBatch(float thres
     return changeThreshold(threshold, imageSize);
   }
   preprocessingStart();
+  clearDecoder();
   std::vector<cv::Mat> masks;
   std::vector<int> boxes;
   try{
@@ -534,10 +553,4 @@ std::tuple<std::vector<cv::Mat>, std::vector<int>> Sam3::changeThreshold(float t
   return std::make_tuple(masks, boxes);
 }
 
-bool Sam3::isDecoderEmpty(){
-  if(outputDecoder[0].size() == 0){
-    return true;
-  }
-  return false;
-}
 
