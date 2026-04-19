@@ -109,13 +109,13 @@ cmake --build build
 
 ./build/sam3_cpp_test -vision_encoder="sam3/vision-encoder.onnx" -text_encoder="sam3/text-encoder.onnx" -decoder="sam3/decoder.onnx" -tokenizer="sam3/tokenizer.json" -image="david-tomaseti-Vw2HZQ1FGjU-unsplash.jpg" -device="cuda:0" -boxes="pos:124,113,183,329;neg:379,454,329,297" -threshold=0.5
 
-./build/sam3_cpp_test -vision_encoder="sam3/vision-encoder.onnx" -text_encoder="sam3/text-encoder.onnx"  -decoder="sam3/decoder.onnx" -tokenizer="sam3/tokenizer.json" -image="david-tomaseti-Vw2HZQ1FGjU-unsplash.jpg" -device="cuda:0" -text="zebra" -boxes="pos:379,454,329,297" -threshold=0.5
+./build/sam3_cpp_test -vision_encoder="sam3/vision-encoder.onnx" -text_encoder="sam3/text-encoder.onnx" -decoder="sam3/decoder.onnx" -tokenizer="sam3/tokenizer.json" -image="david-tomaseti-Vw2HZQ1FGjU-unsplash.jpg" -device="cuda:0" -text="zebra" -boxes="pos:379,454,329,297" -threshold=0.5
 
-./build/sam3_cpp_test -vision_encoder="sam3/vision-encoder.onnx" -text_encoder="sam3/text-encoder.onnx"  -decoder="sam3/decoder.onnx" -tokenizer="sam3/tokenizer.json" -image="david-tomaseti-Vw2HZQ1FGjU-unsplash.jpg" -device="cuda:0" -text="zebra,water" -threshold=0.5
+./build/sam3_cpp_test -vision_encoder="sam3/vision-encoder.onnx" -text_encoder="sam3/text-encoder.onnx" -decoder="sam3/decoder.onnx" -tokenizer="sam3/tokenizer.json" -image="david-tomaseti-Vw2HZQ1FGjU-unsplash.jpg" -device="cuda:0" -text="zebra,water" -threshold=0.5
 
-./build/sam3_cpp_test -vision_encoder="sam3/vision-encoder.onnx" -text_encoder="sam3/text-encoder.onnx"  -decoder="sam3/decoder.onnx" -tokenizer="sam3/tokenizer.json" -image="david-tomaseti-Vw2HZQ1FGjU-unsplash.jpg" -device="cuda:0" -boxes="pos:0,0,364,187-pos:379,454,329,297" -threshold=0.5
+./build/sam3_cpp_test -vision_encoder="sam3/vision-encoder.onnx" -text_encoder="sam3/text-encoder.onnx" -decoder="sam3/decoder.onnx" -tokenizer="sam3/tokenizer.json" -image="david-tomaseti-Vw2HZQ1FGjU-unsplash.jpg" -device="cuda:0" -boxes="pos:0,0,364,187-pos:379,454,329,297" -threshold=0.5
 
-./build/sam3_cpp_test -vision_encoder="sam3/vision-encoder.onnx" -text_encoder="sam3/text-encoder.onnx"  -decoder="sam3/decoder.onnx" -tokenizer="sam3/tokenizer.json" -image="david-tomaseti-Vw2HZQ1FGjU-unsplash.jpg" -device="cuda:0" -text="tree,zebra" -boxes="pos:0,0,364,187-pos:379,454,329,297" -threshold=0.5
+./build/sam3_cpp_test -vision_encoder="sam3/vision-encoder.onnx" -text_encoder="sam3/text-encoder.onnx" -decoder="sam3/decoder.onnx" -tokenizer="sam3/tokenizer.json" -image="david-tomaseti-Vw2HZQ1FGjU-unsplash.jpg" -device="cuda:0" -text="tree,zebra" -boxes="pos:0,0,364,187-pos:379,454,329,297" -threshold=0.5
 
-./build/sam3_cpp_test -vision_encoder="sam3/vision-encoder.onnx" -text_encoder="sam3/text-encoder.onnx"  -decoder="sam3/decoder.onnx" -tokenizer="sam3/tokenizer.json" -image="david-tomaseti-Vw2HZQ1FGjU-unsplash.jpg" -device="cuda:0" -text="zebra,water,tree" -threshold=0.25
+./build/sam3_cpp_test -vision_encoder="sam3/vision-encoder.onnx" -text_encoder="sam3/text-encoder.onnx" -decoder="sam3/decoder.onnx" -tokenizer="sam3/tokenizer.json" -image="david-tomaseti-Vw2HZQ1FGjU-unsplash.jpg" -device="cuda:0" -text="zebra,water,tree" -threshold=0.25
 ```
