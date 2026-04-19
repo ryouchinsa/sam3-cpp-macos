@@ -1,5 +1,6 @@
 #include "sam3.h"
 #include <opencv2/opencv.hpp>
+#include <future>
 
 Sam3::Sam3(){}
 Sam3::~Sam3(){
@@ -16,12 +17,11 @@ bool Sam3::clearLoadModel(){
   try{
     Ort::Session* v = visionEncoder.release();
     Ort::Session* t = textEncoder.release();
-    Ort::Session* g = geometryEncoder.release();
     Ort::Session* d = decoder.release();
     delete v;
     delete t;
-    delete g;
     delete d;
+    inputTensorValuesFloat.resize(0);
     inputShapeVision.resize(0);
     for(int i = 0; i < 4; i++){
       outputShapeVision[i].resize(0);
@@ -34,11 +34,6 @@ bool Sam3::clearLoadModel(){
     }
     outputText0.resize(0);
     outputText1.resize(0);
-    for(int i = 0; i < 2; i++){
-      outputShapeBoxes[i].resize(0);
-    }
-    outputBoxes0.resize(0);
-    outputBoxes1.resize(0);
     clearDecoder();
   }catch(Ort::Exception& e){
     return false;
@@ -72,31 +67,89 @@ void Sam3::terminatePreprocessing(){
   terminating = true;
 }
 
-bool Sam3::loadModel(const std::string& visionPath, const std::string& textPath, const std::string& geometryPath, const std::string& decoderPath, const std::string& tokenizerPath, int threadsNumber, const std::string device){
+bool Sam3::loadModel(const std::string& visionPath, const std::string& textPath, const std::string& decoderPath, const std::string& tokenizerPath, int threadsNumber, const std::string device){
   try{
     loadingStart();
     if(!clearLoadModel()){
       loadingEnd();
       return false;
     }
-    if(!modelExists(visionPath) || !modelExists(textPath) || !modelExists(geometryPath) || !modelExists(decoderPath) || !modelExists(tokenizerPath)){
+    if(!modelExists(visionPath) || !modelExists(textPath) || !modelExists(decoderPath) || !modelExists(tokenizerPath)){
       loadingEnd();
       return false;
     }
+
+    // Use global thread pool like Python's onnxruntime does
+    Ort::ThreadingOptions threadingOptions;
+    threadingOptions.SetGlobalIntraOpNumThreads(threadsNumber);
+    threadingOptions.SetGlobalInterOpNumThreads(threadsNumber);
+
+    // Replace the Env — must be done before session creation
+    env = Ort::Env(threadingOptions, ORT_LOGGING_LEVEL_WARNING, "test");
+
     sessionOptions.SetIntraOpNumThreads(threadsNumber);
+    sessionOptions.SetInterOpNumThreads(threadsNumber);  // <-- this was missing
     sessionOptions.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_ALL);
+
+    // Disable per-session thread spinning — let global pool handle it
+    sessionOptions.AddConfigEntry("session.intra_op.allow_spinning", "0");
+
+    // Enable memory pattern optimization
+    sessionOptions.EnableMemPattern();
+    sessionOptions.EnableCpuMemArena();
+
     if(device.substr(0, 5) == "cuda:"){
       int gpuDeviceId = std::stoi(device.substr(5));
       OrtCUDAProviderOptions options;
       options.device_id = gpuDeviceId;
       sessionOptions.AppendExecutionProvider_CUDA(options);
     }
-    visionEncoder = std::make_unique<Ort::Session>(env, visionPath.c_str(), sessionOptions);
-    textEncoder = std::make_unique<Ort::Session>(env, textPath.c_str(), sessionOptions);
-    geometryEncoder = std::make_unique<Ort::Session>(env, geometryPath.c_str(), sessionOptions);
-    decoder = std::make_unique<Ort::Session>(env, decoderPath.c_str(), sessionOptions);
-    auto blob = LoadBytesFromFile(tokenizerPath.c_str());
-    tokenizer = Tokenizer::FromBlobJSON(blob);
+
+    // Replace the three make_unique lines in loadModel() with:
+    auto futureVision = std::async(std::launch::async, [&](){
+      return std::make_unique<Ort::Session>(env, visionPath.c_str(), sessionOptions);
+    });
+    auto futureText = std::async(std::launch::async, [&](){
+      return std::make_unique<Ort::Session>(env, textPath.c_str(), sessionOptions);
+    });
+    auto futureDecoder = std::async(std::launch::async, [&](){
+      return std::make_unique<Ort::Session>(env, decoderPath.c_str(), sessionOptions);
+    });
+    auto futureTokenizer = std::async(std::launch::async, [&](){
+      auto blob = LoadBytesFromFile(tokenizerPath.c_str());
+      return Tokenizer::FromBlobJSON(blob);
+    });
+    visionEncoder = futureVision.get();
+    textEncoder   = futureText.get();
+    decoder       = futureDecoder.get();
+    tokenizer     = futureTokenizer.get();
+
+    auto cacheIONames = [](Ort::Session* sess,
+                           std::vector<std::string>& inNames,  std::vector<const char*>& inPtrs,
+                           std::vector<std::string>& outNames, std::vector<const char*>& outPtrs){
+      Ort::AllocatorWithDefaultOptions alloc;
+
+      inNames.clear();
+      for(size_t i = 0; i < sess->GetInputCount(); i++)
+        inNames.push_back(sess->GetInputNameAllocated(i, alloc).get());
+
+      outNames.clear();
+      for(size_t i = 0; i < sess->GetOutputCount(); i++)
+        outNames.push_back(sess->GetOutputNameAllocated(i, alloc).get());
+
+      // Only build pointer vectors AFTER all strings are final — no more reallocation
+      inPtrs.clear();
+      for(auto& s : inNames)  inPtrs.push_back(s.c_str());
+
+      outPtrs.clear();
+      for(auto& s : outNames) outPtrs.push_back(s.c_str());
+    };
+    cacheIONames(visionEncoder.get(), cachedInputNamesVision, ptrInputNamesVision,
+                                      cachedOutputNamesVision, ptrOutputNamesVision);
+    cacheIONames(textEncoder.get(),   cachedInputNamesText,   ptrInputNamesText,
+                                      cachedOutputNamesText,   ptrOutputNamesText);
+    cacheIONames(decoder.get(),       cachedInputNamesDecoder, ptrInputNamesDecoder,
+                                      cachedOutputNamesDecoder, ptrOutputNamesDecoder);
     
     inputShapeVision = visionEncoder->GetInputTypeInfo(0).GetTensorTypeAndShapeInfo().GetShape();
     inputShapeVision[0] = 1;
@@ -116,6 +169,11 @@ bool Sam3::loadModel(const std::string& visionPath, const std::string& textPath,
     inputShapeText[1][0] = 1;
     outputShapeText[0][0] = 1;
     outputShapeText[1][0] = 1;
+
+    inputTensorValuesFloat.assign(getShapeSize(inputShapeVision), 0.0f);
+    for(int i = 0; i < 4; i++){
+      outputVision[i].assign(getShapeSize(outputShapeVision[i]), 0.0f);
+    }
   }catch(Ort::Exception& e){
     std::cout << e.what() << std::endl;
     loadingEnd();
@@ -153,36 +211,39 @@ bool Sam3::preprocessImage(const cv::Mat& image){
       preprocessingEnd();
       return false;
     }
-    std::vector<float> inputTensorValuesFloat(getShapeSize(inputShapeVision));
-    for(int i = 0; i < inputShapeVision[2]; i++){
-      for(int j = 0; j < inputShapeVision[3]; j++){
-        int64_t pos = i * inputShapeVision[3] + j;
-        int64_t size = inputShapeVision[2] * inputShapeVision[3];
-        inputTensorValuesFloat[pos + size * 0] = image.at<cv::Vec3b>(i, j)[2] / 127.5 - 1.0;
-        inputTensorValuesFloat[pos + size * 1] = image.at<cv::Vec3b>(i, j)[1] / 127.5 - 1.0;
-        inputTensorValuesFloat[pos + size * 2] = image.at<cv::Vec3b>(i, j)[0] / 127.5 - 1.0;
-      }
-    }
+
+    // FAST: vectorized OpenCV ops matching Python's (img / 127.5 - 1.0).transpose(2,0,1)
+    cv::Mat imageFloat;
+    image.convertTo(imageFloat, CV_32F, 1.0 / 127.5, -1.0); // bgr float, normalized
+
+    // Split into B, G, R planes and reorder to R, G, B (CHW layout)
+    std::vector<cv::Mat> channels(3);
+    cv::split(imageFloat, channels);  // channels[0]=B, [1]=G, [2]=R
+
+    int64_t planeSize = inputShapeVision[2] * inputShapeVision[3];
+    // Copy R, G, B into CHW tensor (matching Python's channel order)
+    std::memcpy(inputTensorValuesFloat.data() + 0 * planeSize,
+                channels[2].ptr<float>(), planeSize * sizeof(float)); // R
+    std::memcpy(inputTensorValuesFloat.data() + 1 * planeSize,
+                channels[1].ptr<float>(), planeSize * sizeof(float)); // G
+    std::memcpy(inputTensorValuesFloat.data() + 2 * planeSize,
+                channels[0].ptr<float>(), planeSize * sizeof(float)); // B
+
     auto inputTensor = Ort::Value::CreateTensor<float>(memoryInfo, inputTensorValuesFloat.data(), inputTensorValuesFloat.size(), inputShapeVision.data(), inputShapeVision.size());
     std::vector<Ort::Value> outputTensors;
     for(int i = 0; i < 4; i++){
-      outputVision[i] = std::vector<float>(getShapeSize(outputShapeVision[i]));
-      outputTensors.push_back(Ort::Value::CreateTensor<float>(memoryInfo, outputVision[i].data(), outputVision[i].size(), outputShapeVision[i].data(), outputShapeVision[i].size()));
+      outputTensors.push_back(Ort::Value::CreateTensor<float>(
+        memoryInfo, outputVision[i].data(), outputVision[i].size(),
+        outputShapeVision[i].data(), outputShapeVision[i].size()));
     }
     if(terminating){
       preprocessingEnd();
       return false;
     }
     runOptionsEncoder.UnsetTerminate();
-    std::vector<const char*> inputNames = getInputNames(visionEncoder);
-    std::vector<const char*> outputNames = getOutputNames(visionEncoder);
-    visionEncoder->Run(runOptionsEncoder, inputNames.data(), &inputTensor, 1, outputNames.data(), outputTensors.data(), outputTensors.size());
-    for (size_t i = 0; i < inputNames.size(); ++i) {
-      delete [] inputNames[i];
-    }
-    for (size_t i = 0; i < outputNames.size(); ++i) {
-      delete [] outputNames[i];
-    }
+    visionEncoder->Run(runOptionsEncoder,
+      ptrInputNamesVision.data(),  &inputTensor, 1,
+      ptrOutputNamesVision.data(), outputTensors.data(), outputTensors.size());
   }catch(Ort::Exception& e){
     std::cout << e.what() << std::endl;
     preprocessingEnd();
@@ -201,7 +262,7 @@ void Sam3::preprocessingEnd(){
   terminating = false;
 }
 
-bool Sam3::encodeTextBatch(const std::vector<std::string> &text_list){
+bool Sam3::encodeText(const std::vector<std::string> &text_list){
   try{
     preprocessingStart();
     int batchSize = (int)text_list.size();
@@ -235,7 +296,32 @@ bool Sam3::encodeTextBatch(const std::vector<std::string> &text_list){
             inputTensorValues[1][i + offset] = 0;
           }
         }
-      }else{
+      }
+      // if(text.length() > 0){
+      //   std::vector<int> ids_raw = tokenizer->Encode(text);
+
+      //   // Write directly into inputTensorValues without building intermediate ids vector
+      //   int slot = 0;
+      //   auto write = [&](int id, int mask_val){
+      //     if(slot < inputShapeText[0][1]){
+      //       inputTensorValues[0][slot + offset] = id;
+      //       inputTensorValues[1][slot + offset] = mask_val;
+      //       slot++;
+      //     }
+      //   };
+
+      //   write(49406, 1);                          // BOS token
+      //   for(int id : ids_raw) write(id, 1);       // token ids
+      //   write(49407, 1);                          // EOS token
+
+      //   // Pad remainder
+      //   while(slot < inputShapeText[0][1]){
+      //     inputTensorValues[0][slot + offset] = 49407;
+      //     inputTensorValues[1][slot + offset] = 0;
+      //     slot++;
+      //   }
+      // }
+      else{
         for(int i = 0; i < inputShapeText[0][1]; i++){
           inputTensorValues[0][i + offset] = 49407;
           if(i == 0){
@@ -262,15 +348,9 @@ bool Sam3::encodeTextBatch(const std::vector<std::string> &text_list){
       return false;
     }
     runOptionsEncoder.UnsetTerminate();
-    std::vector<const char*> inputNames = getInputNames(textEncoder);
-    std::vector<const char*> outputNames = getOutputNames(textEncoder);
-    textEncoder->Run(runOptionsEncoder, inputNames.data(), inputTensors.data(), inputTensors.size(), outputNames.data(), outputTensors.data(), outputTensors.size());
-    for (size_t i = 0; i < inputNames.size(); ++i) {
-      delete [] inputNames[i];
-    }
-    for (size_t i = 0; i < outputNames.size(); ++i) {
-      delete [] outputNames[i];
-    }
+    textEncoder->Run(runOptionsEncoder,
+      ptrInputNamesText.data(),  inputTensors.data(), inputTensors.size(),
+      ptrOutputNamesText.data(), outputTensors.data(), outputTensors.size());
   }catch(Ort::Exception& e){
     std::cout << e.what() << std::endl;
     preprocessingEnd();
@@ -280,17 +360,14 @@ bool Sam3::encodeTextBatch(const std::vector<std::string> &text_list){
   return true;
 }
 
-void Sam3::alignTextsAndBoxesBatchSize(std::vector<std::string> *text_list, std::vector<std::vector<cv::Rect2f>> *rects_list, std::vector<std::vector<int>> *labels_list){
-  int boxNum = (int)(*rects_list).size();
-  if(boxNum == 0){
-    return;
-  }
-  int batchSizeBoxes = boxNum;
+void Sam3::alignTextsAndBoxes(std::vector<std::string> *text_list, std::vector<std::vector<cv::Rect2f>> *rects_list, std::vector<std::vector<int>> *labels_list){
   int textNum = (int)(*text_list).size();
+  int boxNum = (int)(*rects_list).size();
   int batchSizeText = textNum;
   if(batchSizeText == 0){
     batchSizeText = 1;
   }
+  int batchSizeBoxes = boxNum;
   if(batchSizeText == batchSizeBoxes){
     return;
   }
@@ -310,9 +387,12 @@ void Sam3::alignTextsAndBoxesBatchSize(std::vector<std::string> *text_list, std:
   }
 }
 
-void Sam3::prepareOutputVisionBatch(int batchSize){
+void Sam3::setOutputVisionToInputTensors(int batchSize, std::vector<Ort::Value> *inputTensors){
   if(batchSize == 1){
     clearVisionBatch();
+    for(int i = 0; i < 4; i++){
+      (*inputTensors).push_back(Ort::Value::CreateTensor<float>(memoryInfo, outputVision[i].data(), outputVision[i].size(), outputShapeVision[i] .data(), outputShapeVision[i] .size()));
+    }
     return;
   }
   std::vector<int64_t> shape = outputShapeVisionBatch[0];
@@ -326,31 +406,30 @@ void Sam3::prepareOutputVisionBatch(int batchSize){
     }
     outputShapeVisionBatch[i] = outputShapeVision[i];
     outputShapeVisionBatch[i][0] = batchSize;
+    (*inputTensors).push_back(Ort::Value::CreateTensor<float>(memoryInfo, outputVisionBatch[i].data(), outputVisionBatch[i].size(), outputShapeVisionBatch[i] .data(), outputShapeVisionBatch[i] .size()));
   }
 }
 
-void Sam3::setOutputVisionToInputTensors(int batchSize, int begin, int end, std::vector<Ort::Value> *inputTensors){
-  if(batchSize == 1){
-    for(int i = begin; i < end; i++){
-      (*inputTensors).push_back(Ort::Value::CreateTensor<float>(memoryInfo, outputVision[i].data(), outputVision[i].size(), outputShapeVision[i] .data(), outputShapeVision[i] .size()));
-    }
-    return;
+std::tuple<std::vector<cv::Mat>, std::vector<int>> Sam3::decode(const std::vector<std::vector<cv::Rect2f>> &rects_list, const std::vector<std::vector<int>> &labels_list, float threshold, const cv::Size &imageSize, bool skipDecode){
+  if(skipDecode){
+    return changeThreshold(threshold, imageSize);
   }
-  for(int i = begin; i < end; i++){
-      (*inputTensors).push_back(Ort::Value::CreateTensor<float>(memoryInfo, outputVisionBatch[i].data(), outputVisionBatch[i].size(), outputShapeVisionBatch[i] .data(), outputShapeVisionBatch[i] .size()));
-    }
-}
-
-bool Sam3::encodeBoxesBatch(const std::vector<std::vector<cv::Rect2f>> &rects_list, const std::vector<std::vector<int>> &labels_list){
+  std::chrono::steady_clock::time_point begin, end;
+  begin = std::chrono::steady_clock::now();
+  preprocessingStart();
+  clearDecoder();
+  std::vector<cv::Mat> masks;
+  std::vector<int> boxes;
   try{
-    if(rects_list.size() == 0){
-      outputBoxes0.resize(0);
-      outputBoxes1.resize(0);
-      return true;
-    }
-    preprocessingStart();
-    int batchSize = (int)rects_list.size();
-    prepareOutputVisionBatch(batchSize);
+    int batchSize = (int)inputShapeText[0][0];
+    std::vector<Ort::Value> inputTensors;
+    setOutputVisionToInputTensors(batchSize, &inputTensors);
+
+    inputTensors.push_back(Ort::Value::CreateTensor<float>(memoryInfo, outputText0.data(), outputText0.size(), outputShapeText[0].data(), outputShapeText[0].size()));
+    uint8_t *ptrOutputText1 = outputText1.data();
+    bool *ptrOutputText1Bool = reinterpret_cast<bool*>(ptrOutputText1);
+    inputTensors.push_back(Ort::Value::CreateTensor<bool>(memoryInfo, ptrOutputText1Bool, outputText1.size(), outputShapeText[1].data(), outputShapeText[1].size()));
+
     int boxNumMax = 0;
     for(int b = 0; b < batchSize; b++){
       std::vector<cv::Rect2f> rects = rects_list[b];
@@ -359,15 +438,13 @@ bool Sam3::encodeBoxesBatch(const std::vector<std::vector<cv::Rect2f>> &rects_li
       }
     }
     if(boxNumMax == 0){
-      outputBoxes0.resize(0);
-      outputBoxes1.resize(0);
-      return true;
+      boxNumMax = 1;
     }
     std::vector<float> inputTensorValues0;
     std::vector<int64_t> inputTensorValues1;
     for(int b = 0; b < batchSize; b++){
-      std::vector<cv::Rect2f> rects = rects_list[b];
-      std::vector<int> labels = labels_list[b];
+      const std::vector<cv::Rect2f>& rects = rects_list[b];
+      const std::vector<int>& labels = labels_list[b];
       for(int i = 0; i < rects.size(); i++){
         inputTensorValues0.push_back(rects[i].x);
         inputTensorValues0.push_back(rects[i].y);
@@ -389,113 +466,64 @@ bool Sam3::encodeBoxesBatch(const std::vector<std::vector<cv::Rect2f>> &rects_li
     inputShape0.push_back(4);
     inputShape1.push_back(batchSize);
     inputShape1.push_back(boxNumMax);
-    std::vector<Ort::Value> inputTensors;
     inputTensors.push_back(Ort::Value::CreateTensor<float>(memoryInfo, inputTensorValues0.data(), inputTensorValues0.size(), inputShape0.data(), inputShape0.size()));
     inputTensors.push_back(Ort::Value::CreateTensor<int64_t>(memoryInfo, inputTensorValues1.data(), inputTensorValues1.size(), inputShape1.data(), inputShape1.size()));
-    setOutputVisionToInputTensors(batchSize, 2, 4, &inputTensors);
-    for(int i = 0; i < 2; i++){
-      outputShapeBoxes[i] = outputShapeText[i];
-    }
-    outputShapeBoxes[0][1] = outputShapeBoxes[1][1] = boxNumMax + 1;
-    outputBoxes0 = std::vector<float>(getShapeSize(outputShapeBoxes[0]));
-    outputBoxes1 = std::vector<uint8_t>(getShapeSize(outputShapeBoxes[1]));
-    uint8_t *ptrOutputBoxes1 = outputBoxes1.data();
-    bool *ptrOutputBoxes1Bool = reinterpret_cast<bool*>(ptrOutputBoxes1);
-    std::vector<Ort::Value> outputTensors;
-    outputTensors.push_back(Ort::Value::CreateTensor<float>(memoryInfo, outputBoxes0.data(), outputBoxes0.size(), outputShapeBoxes[0].data(), outputShapeBoxes[0].size()));
-    outputTensors.push_back(Ort::Value::CreateTensor<bool>(memoryInfo, ptrOutputBoxes1Bool, outputBoxes1.size(), outputShapeBoxes[1].data(), outputShapeBoxes[1].size()));
-    if(terminating){
-      preprocessingEnd();
-      return false;
-    }
-    runOptionsEncoder.UnsetTerminate();
-    std::vector<const char*> inputNames = getInputNames(geometryEncoder);
-    std::vector<const char*> outputNames = getOutputNames(geometryEncoder);
-    geometryEncoder->Run(runOptionsEncoder, inputNames.data(), inputTensors.data(), inputTensors.size(), outputNames.data(), outputTensors.data(), outputTensors.size());
-    for (size_t i = 0; i < inputNames.size(); ++i) {
-      delete [] inputNames[i];
-    }
-    for (size_t i = 0; i < outputNames.size(); ++i) {
-      delete [] outputNames[i];
-    }
-  }catch(Ort::Exception& e){
-    std::cout << e.what() << std::endl;
-    preprocessingEnd();
-    return false;
-  }
-  preprocessingEnd();
-  return true;
-}
 
-std::tuple<std::vector<cv::Mat>, std::vector<int>> Sam3::decodeBatch(float threshold, const cv::Size &imageSize, bool skipDecode){
-  if(skipDecode){
-    return changeThreshold(threshold, imageSize);
-  }
-  preprocessingStart();
-  clearDecoder();
-  std::vector<cv::Mat> masks;
-  std::vector<int> boxes;
-  try{
-    int batchSize = (int)inputShapeText[0][0];
-    prepareOutputVisionBatch(batchSize);
-    std::vector<Ort::Value> inputTensors;
-    setOutputVisionToInputTensors(batchSize, 0, 4, &inputTensors);
-    std::vector<float> outputTextBoxes0 = outputText0;
-    std::vector<uint8_t> outputTextBoxes1 = outputText1;
-    std::vector<int64_t> outputShapeTextBoxes[2];
-    for(int i = 0; i < 2; i++){
-      outputShapeTextBoxes[i] = outputShapeText[i];
-    }
-    if(!outputBoxes0.empty()){
-      for(int b = batchSize - 1; b >= 0; b--){
-        int sizeTextBoxes0 = (int)(outputShapeTextBoxes[0][1] * outputShapeTextBoxes[0][2]);
-        int sizeTextBoxes1 = (int)(outputShapeTextBoxes[1][1]);
-        int offsetTextBoxes0 = sizeTextBoxes0 * (b + 1);
-        int offsetTextBoxes1 = sizeTextBoxes1 * (b + 1);
-        int sizeBoxes0 = (int)(outputShapeBoxes[0][1] * outputShapeBoxes[0][2]);
-        int sizeBoxes1 = (int)(outputShapeBoxes[1][1]);
-        int offsetBoxes0 = sizeBoxes0 * b;
-        int offsetBoxes1 = sizeBoxes1 * b;
-        outputTextBoxes0.insert(outputTextBoxes0.begin() + offsetTextBoxes0, outputBoxes0.begin() + offsetBoxes0, outputBoxes0.begin() + offsetBoxes0 + sizeBoxes0);
-        outputTextBoxes1.insert(outputTextBoxes1.begin() + offsetTextBoxes1, outputBoxes1.begin() + offsetBoxes1, outputBoxes1.begin() + offsetBoxes1 + sizeBoxes1);
-      }
-      for(int i = 0; i < 2; i++){
-        outputShapeTextBoxes[i][1] += outputShapeBoxes[i][1];
-      }
-    }
-    inputTensors.push_back(Ort::Value::CreateTensor<float>(memoryInfo, outputTextBoxes0.data(), outputTextBoxes0.size(), outputShapeTextBoxes[0].data(), outputShapeTextBoxes[0].size()));
-    uint8_t *ptrOutputTextBoxes1 = outputTextBoxes1.data();
-    bool *ptrOutputTextBoxes1Bool = reinterpret_cast<bool*>(ptrOutputTextBoxes1);
-    inputTensors.push_back(Ort::Value::CreateTensor<bool>(memoryInfo, ptrOutputTextBoxes1Bool, outputTextBoxes1.size(), outputShapeTextBoxes[1].data(), outputShapeTextBoxes[1].size()));
     if(terminating){
       preprocessingEnd();
       return std::make_tuple(masks, boxes);
     }
     runOptionsEncoder.UnsetTerminate();
-    std::vector<const char*> inputNames = getInputNames(decoder);
-    std::vector<const char*> outputNames = getOutputNames(decoder);
-    auto outputTensors = decoder->Run(runOptionsEncoder, inputNames.data(), inputTensors.data(), inputTensors.size(), outputNames.data(), outputNames.size());
-    for (size_t i = 0; i < inputNames.size(); ++i) {
-      delete [] inputNames[i];
-    }
-    for (size_t i = 0; i < outputNames.size(); ++i) {
-      delete [] outputNames[i];
-    }
+
+    // // Allocate output buffers based on actual batch size (done just before this)
+    // for(int i = 0; i < 4; i++){
+    //   outputShapeDecoder[i] = decoder->GetOutputTypeInfo(i).GetTensorTypeAndShapeInfo().GetShape();
+    //   outputShapeDecoder[i][0] = batchSize;
+    // }
+    // outputShapeDecoder[0][2] = outputShapeDecoder[0][3] = outputShapeVision[0][2];
+    // outputShapeDecoder[0][1] = outputShapeDecoder[1][1];
+    // outputShapeDecoder[2][1] = outputShapeDecoder[1][1];
+    // outputShapeDecoder[3][1] = 1;
+    // for(int i = 0; i < 4; i++){
+    //   printShape(outputShapeDecoder[i]);
+    //   outputDecoder[i].resize(getShapeSize(outputShapeDecoder[i]));
+    // }
+
+    // // Pre-bind output tensors so ORT writes directly into outputDecoder — no post-run copy
+    // std::vector<Ort::Value> decoderOutputTensors;
+    // for(int i = 0; i < 4; i++){
+    //   decoderOutputTensors.push_back(Ort::Value::CreateTensor<float>(
+    //     memoryInfo, outputDecoder[i].data(), outputDecoder[i].size(),
+    //     outputShapeDecoder[i].data(), outputShapeDecoder[i].size()));
+    // }
+
+    // decoder->Run(runOptionsEncoder,
+    //   ptrInputNamesDecoder.data(),  inputTensors.data(),          inputTensors.size(),
+    //   ptrOutputNamesDecoder.data(), decoderOutputTensors.data(),  decoderOutputTensors.size());
+
+    auto outputTensors = decoder->Run(runOptionsEncoder,
+      ptrInputNamesDecoder.data(), inputTensors.data(), inputTensors.size(),
+      ptrOutputNamesDecoder.data(), ptrOutputNamesDecoder.size());
     for(int i = 0; i < 4; i++){
       auto values = outputTensors[i].GetTensorMutableData<float>();
       outputShapeDecoder[i] = outputTensors[i].GetTensorTypeAndShapeInfo().GetShape();
       outputDecoder[i].assign(values, values + getShapeSize(outputShapeDecoder[i]));
     }
+
   }catch(Ort::Exception& e){
     std::cout << e.what() << std::endl;
     preprocessingEnd();
     return std::make_tuple(masks, boxes);
   }
   preprocessingEnd();
+  end = std::chrono::steady_clock::now();
+  std::cout << "decode sec = " << (std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count()) / 1000000.0 <<std::endl;
   return changeThreshold(threshold, imageSize);
 }
 
 std::tuple<std::vector<cv::Mat>, std::vector<int>> Sam3::changeThreshold(float threshold, const cv::Size &imageSize){
+  std::chrono::steady_clock::time_point begin, end;
+  begin = std::chrono::steady_clock::now();
   preprocessingStart();
   std::vector<cv::Mat> masks;
   std::vector<int> boxes;
@@ -537,19 +565,19 @@ std::tuple<std::vector<cv::Mat>, std::vector<int>> Sam3::changeThreshold(float t
       for (int i = 0; i < 4; i++) {
         boxes.push_back(box[i]);
       }
-      cv::Mat maskf((int)outputShapeDecoder[0][2], (int)outputShapeDecoder[0][3], CV_32F, cv::Scalar(0));
-      for (int i = 0; i < maskf.rows; i++) {
-        for (int j = 0; j < maskf.cols; j++) {
-          maskf.at<float>(i, j) = outputDecoder[0][k * maskf.rows * maskf.cols + i * maskf.cols + j + b * maskSize];
-        }
-      }
-      cv::resize(maskf, maskf, imageSize, 0, 0, cv::INTER_LINEAR);
+      // REPLACE the maskf construction + inner loop:
+      cv::Mat maskf((int)outputShapeDecoder[0][2], (int)outputShapeDecoder[0][3], CV_32F,
+                    outputDecoder[0].data() + k * (int)outputShapeDecoder[0][2] * (int)outputShapeDecoder[0][3] + b * maskSize);
+      cv::Mat maskResized;
+      cv::resize(maskf, maskResized, imageSize, 0, 0, cv::INTER_LINEAR);
       cv::Mat mask(imageSize.height, imageSize.width, CV_8UC1, cv::Scalar(0));
-      mask.setTo(255, maskf > 0);
+      mask.setTo(255, maskResized > 0);
       masks.push_back(mask);
     }
   }
   preprocessingEnd();
+  end = std::chrono::steady_clock::now();
+  std::cout << "changeThreshold sec = " << (std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count()) / 1000000.0 <<std::endl;
   return std::make_tuple(masks, boxes);
 }
 

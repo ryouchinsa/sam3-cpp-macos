@@ -101,34 +101,6 @@ int getShapeSize(const std::vector<int64_t> &shape){
   return size;
 }
 
-std::vector<const char*> getInputNames(std::unique_ptr<Ort::Session> &session){
-  std::vector<const char*> inputNames;
-  Ort::AllocatorWithDefaultOptions allocator;
-  for (size_t i = 0; i < session->GetInputCount(); ++i) {
-    Ort::AllocatedStringPtr name_Ptr = session->GetInputNameAllocated(i, allocator);
-    char* name = name_Ptr.get();
-    size_t name_length = strlen(name) + 1;
-    char* name_new = new char[name_length];
-    strncpy(name_new, name, name_length);
-    inputNames.push_back(name_new);
-  }
-  return inputNames;
-}
-
-std::vector<const char*> getOutputNames(std::unique_ptr<Ort::Session> &session){
-  std::vector<const char*> outputNames;
-  Ort::AllocatorWithDefaultOptions allocator;
-  for (size_t i = 0; i < session->GetOutputCount(); ++i) {
-    Ort::AllocatedStringPtr name_Ptr = session->GetOutputNameAllocated(i, allocator);
-    char* name = name_Ptr.get();
-    size_t name_length = strlen(name) + 1;
-    char* name_new = new char[name_length];
-    strncpy(name_new, name, name_length);
-    outputNames.push_back(name_new);
-  }
-  return outputNames;
-}
-
 std::vector<int> sort_indexes(const std::vector<float> &v) {
   std::vector<int> idx(v.size());
   std::iota(idx.begin(), idx.end(), 0);

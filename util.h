@@ -18,8 +18,6 @@ bool modelExists(const std::string& modelPath);
 std::string LoadBytesFromFile(const std::string& path);
 void printShape(const std::vector<int64_t> &shape);
 int getShapeSize(const std::vector<int64_t> &shape);
-std::vector<const char*> getInputNames(std::unique_ptr<Ort::Session> &session);
-std::vector<const char*> getOutputNames(std::unique_ptr<Ort::Session> &session);
 std::vector<int> sort_indexes(const std::vector<float> &v);
 float calc_iou(const std::vector<int> &box1, const std::vector<int> &box2);
 bool can_append_box(const std::vector<int> box, const std::vector<int> &boxes);
